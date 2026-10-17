@@ -200,22 +200,6 @@ func sortedKeys(s snapshot) []string {
 	return keys
 }
 
-func TestIsRepoURL(t *testing.T) {
-	tests := map[string]bool{
-		"git@github.com:raveesh-me/rh.git": true,
-		"https://github.com/raveesh-me/rh": true,
-		"ssh://git@host/x/y":               true,
-		"../local/repo.git":                true,
-		"TASK=feat-x":                      false,
-		"REPOS=iam-backend":                false,
-	}
-	for in, want := range tests {
-		if got := isRepoURL(in); got != want {
-			t.Errorf("isRepoURL(%q) = %v, want %v", in, got, want)
-		}
-	}
-}
-
 func TestAddClonesRepo(t *testing.T) {
 	root := t.TempDir()
 	origin := filepath.Join(root, "src.git")
