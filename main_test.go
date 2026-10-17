@@ -208,17 +208,53 @@ func sortedKeys(s snapshot) []string {
 	return keys
 }
 
-func TestAddClonesRepo(t *testing.T) {
+func TestRepoDirName(t *testing.T) {
+	tests := map[string]string{
+		"git@github.com:GoHighLevel/leadgen-marketplace-backend.git": "leadgen-marketplace-backend",
+		"https://github.com/raveesh-me/rh":                           "rh",
+		"https://github.com/raveesh-me/rh.git/":                      "rh",
+		"/tmp/src.git":                                               "src",
+	}
+	for in, want := range tests {
+		if got := repoDirName(in); got != want {
+			t.Errorf("repoDirName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestUniqueByDir(t *testing.T) {
+	got, err := uniqueByDir([]string{"git@h:a/x.git", "git@h:a/y.git", "git@h:a/x.git"})
+	if err != nil || !reflect.DeepEqual(got, []string{"git@h:a/x.git", "git@h:a/y.git"}) {
+		t.Errorf("uniqueByDir = %v, %v", got, err)
+	}
+	if _, err := uniqueByDir([]string{"git@h:a/x.git", "git@h:b/x.git"}); err == nil {
+		t.Error("expected conflict for two repos named x")
+	}
+}
+
+func TestAddClonesReposInParallel(t *testing.T) {
 	root := t.TempDir()
-	origin := filepath.Join(root, "src.git")
-	mustGit(t, root, "init", "-q", "--bare", origin)
+	var origins []string
+	for _, name := range []string{"one", "two", "three"} {
+		origin := filepath.Join(root, "src", name+".git")
+		mustGit(t, root, "init", "-q", "--bare", origin)
+		origins = append(origins, origin)
+	}
 	dest := filepath.Join(root, "ws")
-	os.Mkdir(dest, 0o755)
+	os.MkdirAll(filepath.Join(dest, "three"), 0o755) // pre-existing: skipped, not an error
 	t.Chdir(dest)
-	if code := cmdAdd([]string{origin}); code != 0 {
+	if code := cmdAdd(append(origins, origins[0])); code != 0 {
 		t.Fatalf("cmdAdd = %d", code)
 	}
-	if !isRepoRoot(filepath.Join(dest, "src")) {
-		t.Error("repo not cloned into ./src")
+	for _, name := range []string{"one", "two"} {
+		if !isRepoRoot(filepath.Join(dest, name)) {
+			t.Errorf("%s not cloned", name)
+		}
+	}
+	if isRepoRoot(filepath.Join(dest, "three")) {
+		t.Error("existing folder three was cloned into")
+	}
+	if code := cmdAdd([]string{filepath.Join(root, "missing.git")}); code != 1 {
+		t.Errorf("failed clone exit = %d, want 1", code)
 	}
 }

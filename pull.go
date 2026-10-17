@@ -5,18 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
-	"sync"
 )
-
-const maxParallelPulls = 8
-
-type updateResult struct {
-	repo string
-	msg  string
-	err  error
-}
 
 func cmdPull(args []string) int {
 	if hasMakeTarget(".", "pull") {
@@ -31,7 +21,7 @@ func cmdPull(args []string) int {
 		fmt.Println("rh pull: no git repos here")
 		return 0
 	}
-	return reportUpdates(updateAll(repos))
+	return reportResults(forEachParallel(repos, repoLabel, updateRepo))
 }
 
 // findRepos returns dir itself if it is a repo, otherwise its direct child repos.
@@ -57,23 +47,6 @@ func findRepos(dir string) ([]string, error) {
 func isRepoRoot(dir string) bool {
 	info, err := os.Stat(filepath.Join(dir, ".git"))
 	return err == nil && info.IsDir()
-}
-
-func updateAll(repos []string) []updateResult {
-	results := make([]updateResult, len(repos))
-	sem := make(chan struct{}, maxParallelPulls)
-	var wg sync.WaitGroup
-	for i, repo := range repos {
-		wg.Go(func() {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			msg, err := updateRepo(repo)
-			results[i] = updateResult{repo: repoLabel(repo), msg: msg, err: err}
-		})
-	}
-	wg.Wait()
-	sort.Slice(results, func(a, b int) bool { return results[a].repo < results[b].repo })
-	return results
 }
 
 func repoLabel(repo string) string {
@@ -117,23 +90,6 @@ func defaultBranch(dir string) string {
 		}
 	}
 	return "main"
-}
-
-func reportUpdates(results []updateResult) int {
-	width := 0
-	for _, r := range results {
-		width = max(width, len(r.repo))
-	}
-	code := 0
-	for _, r := range results {
-		if r.err != nil {
-			fmt.Printf("  \033[31m✗\033[0m %-*s  %v\n", width, r.repo, r.err)
-			code = 1
-			continue
-		}
-		fmt.Printf("  \033[32m✓\033[0m %-*s  %s\n", width, r.repo, r.msg)
-	}
-	return code
 }
 
 func git(dir string, args ...string) (string, error) {

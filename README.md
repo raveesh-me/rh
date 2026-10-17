@@ -9,7 +9,7 @@ go install github.com/raveesh-me/rh@latest   # more options: INSTALL.md
 | Command | What it does |
 |---|---|
 | `rh init` | Creates `CLAUDE.md`, `AGENTS.md`, the worktree `Makefile` (from `templates/`, embedded at build time) and `workdir/`. Never overwrites. |
-| `rh add <repo-url> [dir]` | `git clone` into the current folder. |
+| `rh add <url> [url...]` | Clones every repo into the current folder in parallel. Repeated URLs are deduped; folders that already exist are skipped. |
 | `rh update` | Replaces the running `rh` binary with the latest GitHub release (checksum-verified, atomic swap). Use `sudo rh update` if it lives in a root-owned dir. |
 | `rh pull` | Runs `make pull` if the Makefile has that target. Otherwise: for the current repo, or every direct child repo, checks out the default branch (`origin/HEAD`, else main/master) and `git pull --ff-only`. Dirty repos and worktrees are skipped. |
 | `rh mon` | Live view of `.` and `workdir/` (tasks, their repos, and each worktree's branch). |
