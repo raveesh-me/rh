@@ -17,7 +17,8 @@ type builtin struct {
 var builtins = []builtin{
 	{"init", "create CLAUDE.md, AGENTS.md and workdir/ here", cmdInit},
 	{"add", "git clone <repo-url> [dir] into this folder", cmdAdd},
-	{"update", "make update, or checkout default branch + pull in every repo below here", cmdUpdate},
+	{"pull", "make pull, or checkout default branch + pull in every repo below here", cmdPull},
+	{"update", "replace this rh binary with the latest GitHub release", cmdUpdate},
 	{"mon", "live view of ls . and ls workdir", cmdMon},
 	{"diff", "watch files below here and print diffs as they change", cmdDiff},
 }

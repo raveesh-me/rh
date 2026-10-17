@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-const maxParallelUpdates = 8
+const maxParallelPulls = 8
 
 type updateResult struct {
 	repo string
@@ -18,17 +18,17 @@ type updateResult struct {
 	err  error
 }
 
-func cmdUpdate(args []string) int {
-	if hasMakeTarget(".", "update") {
-		return runMake(append([]string{"update"}, args...))
+func cmdPull(args []string) int {
+	if hasMakeTarget(".", "pull") {
+		return runMake(append([]string{"pull"}, args...))
 	}
 	repos, err := findRepos(".")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "rh update:", err)
+		fmt.Fprintln(os.Stderr, "rh pull:", err)
 		return 1
 	}
 	if len(repos) == 0 {
-		fmt.Println("rh update: no git repos here")
+		fmt.Println("rh pull: no git repos here")
 		return 0
 	}
 	return reportUpdates(updateAll(repos))
@@ -61,7 +61,7 @@ func isRepoRoot(dir string) bool {
 
 func updateAll(repos []string) []updateResult {
 	results := make([]updateResult, len(repos))
-	sem := make(chan struct{}, maxParallelUpdates)
+	sem := make(chan struct{}, maxParallelPulls)
 	var wg sync.WaitGroup
 	for i, repo := range repos {
 		wg.Go(func() {

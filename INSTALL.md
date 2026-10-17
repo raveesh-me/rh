@@ -44,6 +44,14 @@ Push a semver tag; the `release` workflow runs tests and GoReleaser publishes th
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
+## Updating
+
+```sh
+rh update        # sudo rh update if installed in /usr/local/bin
+```
+
+Downloads the latest release for your OS/arch, verifies it against `checksums.txt`, and swaps the binary in place. Works for any install route above (a `go install` / source build reports version `dev` and is always replaced).
+
 ## Uninstall
 
 ```sh

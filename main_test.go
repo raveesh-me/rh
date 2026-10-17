@@ -22,7 +22,7 @@ func TestResolve(t *testing.T) {
 		{"no args", nil, routeHelp, "", nil},
 		{"help", []string{"help"}, routeHelp, "", nil},
 		{"version", []string{"--version"}, routeVersion, "", nil},
-		{"builtin", []string{"update", "x"}, routeBuiltin, "update", []string{"x"}},
+		{"builtin", []string{"pull", "x"}, routeBuiltin, "pull", []string{"x"}},
 		{"unknown goes to make", []string{"sync", "V=1"}, routeMake, "", []string{"sync", "V=1"}},
 		{"-m forces make", []string{"-m", "update"}, routeMake, "", []string{"update"}},
 		{"-m alone runs default target", []string{"-m"}, routeMake, "", []string{}},
