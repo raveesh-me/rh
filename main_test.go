@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,6 +86,13 @@ func TestInitIsIdempotent(t *testing.T) {
 	agents, err := os.ReadFile("AGENTS.md")
 	if err != nil || !strings.Contains(string(agents), filepath.Base(dir)) {
 		t.Errorf("AGENTS.md missing project name: %v %q", err, agents)
+	}
+	makefile, _ := os.ReadFile("Makefile")
+	if want, _ := templates.ReadFile("templates/makefile"); !bytes.Equal(makefile, want) {
+		t.Error("Makefile differs from template")
+	}
+	if !makefileDefines(string(makefile), "new") {
+		t.Error("Makefile missing worktree targets")
 	}
 	if info, err := os.Stat("workdir"); err != nil || !info.IsDir() {
 		t.Errorf("workdir not created: %v", err)

@@ -9,13 +9,18 @@ import (
 	"text/template"
 )
 
-//go:embed templates/*.md
+//go:embed templates
 var templates embed.FS
 
 // initFiles maps each file rh init creates to its compiled-in template.
-var initFiles = []struct{ name, template string }{
-	{"CLAUDE.md", "templates/claude.md"},
-	{"AGENTS.md", "templates/agents.md"},
+// Raw templates are copied verbatim (the Makefile is full of $ and braces).
+var initFiles = []struct {
+	name, template string
+	raw            bool
+}{
+	{"CLAUDE.md", "templates/claude.md", false},
+	{"AGENTS.md", "templates/agents.md", false},
+	{"Makefile", "templates/makefile", true},
 }
 
 func cmdInit(args []string) int {
@@ -26,7 +31,7 @@ func cmdInit(args []string) int {
 	}
 	failed := false
 	for _, f := range initFiles {
-		body, err := renderTemplate(f.template, filepath.Base(dir))
+		body, err := renderTemplate(f.template, filepath.Base(dir), f.raw)
 		if err == nil {
 			err = createFile(filepath.Join(dir, f.name), body)
 		}
@@ -45,7 +50,10 @@ func cmdInit(args []string) int {
 	return 0
 }
 
-func renderTemplate(path, project string) ([]byte, error) {
+func renderTemplate(path, project string, raw bool) ([]byte, error) {
+	if raw {
+		return templates.ReadFile(path)
+	}
 	tmpl, err := template.ParseFS(templates, path)
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
