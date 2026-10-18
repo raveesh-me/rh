@@ -33,7 +33,7 @@ func cmdInit(args []string) int {
 	for _, f := range initFiles {
 		body, err := renderTemplate(f.template, filepath.Base(dir), f.raw)
 		if err == nil {
-			err = createFile(filepath.Join(dir, f.name), body)
+			err = syncFile(filepath.Join(dir, f.name), body)
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "rh init:", err)
@@ -65,24 +65,31 @@ func renderTemplate(path, project string, raw bool) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// createFile writes path only if it does not exist yet.
-func createFile(path string, body []byte) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if os.IsExist(err) {
-		fmt.Printf("  skip    %s (exists)\n", filepath.Base(path))
+// syncFile makes path match body. A differing existing file is first copied
+// to path.bak so local edits are never lost.
+func syncFile(path string, body []byte) error {
+	name := filepath.Base(path)
+	old, err := os.ReadFile(path)
+	switch {
+	case os.IsNotExist(err):
+		if err := os.WriteFile(path, body, 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("  create  %s\n", name)
+		return nil
+	case err != nil:
+		return err
+	case bytes.Equal(old, body):
+		fmt.Printf("  ok      %s (up to date)\n", name)
 		return nil
 	}
-	if err != nil {
+	if err := os.WriteFile(path+".bak", old, 0o644); err != nil {
+		return fmt.Errorf("back up %s: %w", name, err)
+	}
+	if err := os.WriteFile(path, body, 0o644); err != nil {
 		return err
 	}
-	if _, err := f.Write(body); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	fmt.Printf("  create  %s\n", filepath.Base(path))
+	fmt.Printf("  update  %s (previous saved as %s.bak)\n", name, name)
 	return nil
 }
 
@@ -91,7 +98,7 @@ func createDir(path string) error {
 		if !info.IsDir() {
 			return fmt.Errorf("%s exists and is not a directory", path)
 		}
-		fmt.Printf("  skip    %s/ (exists)\n", filepath.Base(path))
+		fmt.Printf("  ok      %s/ (exists)\n", filepath.Base(path))
 		return nil
 	}
 	if err := os.Mkdir(path, 0o755); err != nil {

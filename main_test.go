@@ -69,10 +69,10 @@ func TestMakefileDefines(t *testing.T) {
 	}
 }
 
-func TestInitIsIdempotent(t *testing.T) {
+func TestInitUpdatesToLatestWithBackup(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	if err := os.WriteFile("CLAUDE.md", []byte("mine"), 0o644); err != nil {
+	if err := os.WriteFile("CLAUDE.md", []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
@@ -80,8 +80,15 @@ func TestInitIsIdempotent(t *testing.T) {
 			t.Fatalf("cmdInit = %d", code)
 		}
 	}
-	if got, _ := os.ReadFile("CLAUDE.md"); string(got) != "mine" {
-		t.Errorf("existing CLAUDE.md overwritten: %q", got)
+	claude, _ := os.ReadFile("CLAUDE.md")
+	if !strings.Contains(string(claude), "Every change ships as a pull request") {
+		t.Errorf("CLAUDE.md not updated to template: %q", claude)
+	}
+	if bak, _ := os.ReadFile("CLAUDE.md.bak"); string(bak) != "stale" {
+		t.Errorf("CLAUDE.md.bak = %q, want previous content", bak)
+	}
+	if _, err := os.Stat("AGENTS.md.bak"); !os.IsNotExist(err) {
+		t.Error("unchanged AGENTS.md should not get a backup")
 	}
 	agents, err := os.ReadFile("AGENTS.md")
 	if err != nil || !strings.Contains(string(agents), filepath.Base(dir)) {
