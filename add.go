@@ -18,7 +18,7 @@ func cmdAdd(args []string) int {
 		fmt.Fprintln(os.Stderr, "rh add:", err)
 		return 2
 	}
-	return reportResults(forEachParallel(urls, repoDirName, cloneRepo))
+	return runParallel("cloning", urls, repoDirName, cloneRepo)
 }
 
 // uniqueByDir drops repeated URLs and rejects different URLs that would clone
@@ -52,12 +52,12 @@ func repoDirName(url string) string {
 	return strings.TrimSuffix(url, ".git")
 }
 
-func cloneRepo(url string) (string, error) {
+func cloneRepo(url string, report func(string)) (string, error) {
 	dir := repoDirName(url)
 	if _, err := os.Stat(dir); err == nil {
 		return "already exists, skipped", nil
 	}
-	if _, err := git(".", "clone", "--quiet", url, dir); err != nil {
+	if err := gitStream(".", report, "clone", "--progress", url, dir); err != nil {
 		return "", err
 	}
 	return "cloned", nil

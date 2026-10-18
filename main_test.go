@@ -173,7 +173,7 @@ func TestUpdateRepoPullsDefaultBranch(t *testing.T) {
 	mustGit(t, clone, "checkout", "-q", "-b", "feature")
 	mustGit(t, origin, "commit", "-q", "--allow-empty", "-m", "two")
 
-	msg, err := updateRepo(clone)
+	msg, err := updateRepo(clone, func(string) {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestUpdateRepoPullsDefaultBranch(t *testing.T) {
 	}
 
 	os.WriteFile(filepath.Join(clone, "dirty"), []byte("x"), 0o644)
-	if _, err := updateRepo(clone); err == nil || !strings.Contains(err.Error(), "dirty") {
+	if _, err := updateRepo(clone, func(string) {}); err == nil || !strings.Contains(err.Error(), "dirty") {
 		t.Errorf("dirty repo err = %v", err)
 	}
 }

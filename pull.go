@@ -21,7 +21,7 @@ func cmdPull(args []string) int {
 		fmt.Println("rh pull: no git repos here")
 		return 0
 	}
-	return reportResults(forEachParallel(repos, repoLabel, updateRepo))
+	return runParallel("pulling", repos, repoLabel, updateRepo)
 }
 
 // findRepos returns dir itself if it is a repo, otherwise its direct child repos.
@@ -56,7 +56,7 @@ func repoLabel(repo string) string {
 	return repo
 }
 
-func updateRepo(dir string) (string, error) {
+func updateRepo(dir string, report func(string)) (string, error) {
 	status, err := git(dir, "status", "--porcelain")
 	if err != nil {
 		return "", err
@@ -69,7 +69,7 @@ func updateRepo(dir string) (string, error) {
 		return "", err
 	}
 	before, _ := git(dir, "rev-parse", "--short", "HEAD")
-	if _, err := git(dir, "pull", "--ff-only", "--quiet"); err != nil {
+	if err := gitStream(dir, report, "pull", "--ff-only", "--progress"); err != nil {
 		return "", err
 	}
 	after, _ := git(dir, "rev-parse", "--short", "HEAD")

@@ -1,52 +1,33 @@
 package main
 
 import (
-	"fmt"
-	"sort"
+	"os"
 	"sync"
 )
 
 const maxParallel = 8
 
-type repoResult struct {
-	repo string
-	msg  string
-	err  error
-}
+// job does the work for one item. report may be called with short progress
+// text (e.g. git's "Receiving objects: 45%") while it runs.
+type job func(item string, report func(string)) (string, error)
 
-// forEachParallel runs fn on every item with bounded concurrency and returns
-// the results sorted by label.
-func forEachParallel(items []string, label func(string) string, fn func(string) (string, error)) []repoResult {
-	results := make([]repoResult, len(items))
+// runParallel runs fn on every item (at most maxParallel at once) with live
+// per-item progress on stdout, and returns 1 if any item failed.
+func runParallel(verb string, items []string, label func(string) string, fn job) int {
+	p := newProgress(os.Stdout, verb, items, label)
+	stop := p.animate()
 	sem := make(chan struct{}, maxParallel)
 	var wg sync.WaitGroup
 	for i, item := range items {
 		wg.Go(func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			msg, err := fn(item)
-			results[i] = repoResult{repo: label(item), msg: msg, err: err}
+			p.start(i)
+			msg, err := fn(item, func(s string) { p.report(i, s) })
+			p.finish(i, msg, err)
 		})
 	}
 	wg.Wait()
-	sort.Slice(results, func(a, b int) bool { return results[a].repo < results[b].repo })
-	return results
-}
-
-// reportResults prints one ✓/✗ line per repo and returns 1 if any failed.
-func reportResults(results []repoResult) int {
-	width := 0
-	for _, r := range results {
-		width = max(width, len(r.repo))
-	}
-	code := 0
-	for _, r := range results {
-		if r.err != nil {
-			fmt.Printf("  \033[31m✗\033[0m %-*s  %v\n", width, r.repo, r.err)
-			code = 1
-			continue
-		}
-		fmt.Printf("  \033[32m✓\033[0m %-*s  %s\n", width, r.repo, r.msg)
-	}
-	return code
+	stop()
+	return p.done()
 }
