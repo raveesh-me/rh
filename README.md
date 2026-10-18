@@ -8,7 +8,7 @@ go install github.com/raveesh-me/rh@latest   # more options: INSTALL.md
 
 | Command | What it does |
 |---|---|
-| `rh init` | Creates or updates `CLAUDE.md`, `AGENTS.md` and the worktree `Makefile` to the templates built into this binary (`templates/`), plus `workdir/`. Changed files are backed up to `<name>.bak` first. Run `rh update` first to get the newest templates. |
+| `rh init` | Creates or updates `CLAUDE.md`, `AGENTS.md` and the worktree `Makefile` to the templates built into this binary (`templates/`), plus `workdir/`. These files are owned by rh — hand edits are overwritten. Run `rh update` first to get the newest templates. |
 | `rh add <url> [url...]` | Clones every repo into the current folder in parallel. Repeated URLs are deduped; folders that already exist are skipped. |
 | `rh update` | Replaces the running `rh` binary with the latest GitHub release (checksum-verified, atomic swap). Use `sudo rh update` if it lives in a root-owned dir. |
 | `rh pull` | Runs `make pull` if the Makefile has that target. Otherwise: for the current repo, or every direct child repo, checks out the default branch (`origin/HEAD`, else main/master) and `git pull --ff-only`. Dirty repos and worktrees are skipped. |

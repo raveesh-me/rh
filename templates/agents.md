@@ -1,4 +1,4 @@
-<!-- Managed by `rh init`: re-running it replaces this file with the latest template (old copy kept as AGENTS.md.bak). -->
+<!-- Managed by rh. Do not edit: `rh init` overwrites this file with the latest template. -->
 # {{.Project}} workspace — agent instructions
 
 This directory is a multi-repo workspace. It is not itself a git repo.

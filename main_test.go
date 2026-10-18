@@ -69,7 +69,7 @@ func TestMakefileDefines(t *testing.T) {
 	}
 }
 
-func TestInitUpdatesToLatestWithBackup(t *testing.T) {
+func TestInitOverwritesToLatest(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 	if err := os.WriteFile("CLAUDE.md", []byte("stale"), 0o644); err != nil {
@@ -84,11 +84,8 @@ func TestInitUpdatesToLatestWithBackup(t *testing.T) {
 	if !strings.Contains(string(claude), "Every change ships as a pull request") {
 		t.Errorf("CLAUDE.md not updated to template: %q", claude)
 	}
-	if bak, _ := os.ReadFile("CLAUDE.md.bak"); string(bak) != "stale" {
-		t.Errorf("CLAUDE.md.bak = %q, want previous content", bak)
-	}
-	if _, err := os.Stat("AGENTS.md.bak"); !os.IsNotExist(err) {
-		t.Error("unchanged AGENTS.md should not get a backup")
+	if _, err := os.Stat("CLAUDE.md.bak"); !os.IsNotExist(err) {
+		t.Error("rh init should not leave backups")
 	}
 	agents, err := os.ReadFile("AGENTS.md")
 	if err != nil || !strings.Contains(string(agents), filepath.Base(dir)) {

@@ -65,31 +65,27 @@ func renderTemplate(path, project string, raw bool) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// syncFile makes path match body. A differing existing file is first copied
-// to path.bak so local edits are never lost.
+// syncFile makes path match body. These files are owned by rh: hand edits are
+// overwritten, not merged or backed up.
 func syncFile(path string, body []byte) error {
 	name := filepath.Base(path)
-	old, err := os.ReadFile(path)
-	switch {
-	case os.IsNotExist(err):
-		if err := os.WriteFile(path, body, 0o644); err != nil {
-			return err
-		}
-		fmt.Printf("  create  %s\n", name)
-		return nil
-	case err != nil:
-		return err
-	case bytes.Equal(old, body):
+	old, readErr := os.ReadFile(path)
+	exists := readErr == nil
+	if !exists && !os.IsNotExist(readErr) {
+		return readErr
+	}
+	if exists && bytes.Equal(old, body) {
 		fmt.Printf("  ok      %s (up to date)\n", name)
 		return nil
-	}
-	if err := os.WriteFile(path+".bak", old, 0o644); err != nil {
-		return fmt.Errorf("back up %s: %w", name, err)
 	}
 	if err := os.WriteFile(path, body, 0o644); err != nil {
 		return err
 	}
-	fmt.Printf("  update  %s (previous saved as %s.bak)\n", name, name)
+	if exists {
+		fmt.Printf("  update  %s\n", name)
+	} else {
+		fmt.Printf("  create  %s\n", name)
+	}
 	return nil
 }
 
