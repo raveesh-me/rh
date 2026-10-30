@@ -5,6 +5,7 @@ go 1.26.6
 require (
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/log/v2 v2.0.0
+	github.com/bluekeyes/go-gitdiff v0.8.1
 	github.com/dlvhdr/diffnav v0.13.1
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 )
@@ -14,7 +15,6 @@ require (
 	charm.land/lipgloss/v2 v2.0.5 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/bluekeyes/go-gitdiff v0.8.1 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260703014108-f5a850f9c2b7 // indirect
 	github.com/charmbracelet/x/ansi v0.11.7 // indirect
