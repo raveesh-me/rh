@@ -136,15 +136,84 @@ func TestScanAndChangedPaths(t *testing.T) {
 	}
 }
 
-func TestUnifiedDiff(t *testing.T) {
-	out, err := unifiedDiff(t.TempDir(), "f.txt", []byte("a\nb\n"), []byte("a\nc\n"))
+func TestGitStyleDiff(t *testing.T) {
+	tests := []struct {
+		name           string
+		old, cur       string
+		hadOld, hasNow bool
+		want           []string
+	}{
+		{"modified", "a\nb\n", "a\nc\n", true, true,
+			[]string{"diff --git a/f.txt b/f.txt", "--- a/f.txt", "+++ b/f.txt", "-b", "+c"}},
+		{"added", "", "hi\n", false, true,
+			[]string{"new file mode", "--- /dev/null", "+++ b/f.txt", "+hi"}},
+		{"deleted", "bye\n", "", true, false,
+			[]string{"deleted file mode", "--- a/f.txt", "+++ /dev/null", "-bye"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := gitStyleDiff("f.txt", []byte(tt.old), []byte(tt.cur), tt.hadOld, tt.hasNow)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(out, want) {
+					t.Errorf("diff missing %q:\n%s", want, out)
+				}
+			}
+		})
+	}
+}
+
+func TestPrintDiffAgainstIsCumulative(t *testing.T) {
+	root := t.TempDir()
+	f := filepath.Join(root, "a.txt")
+	os.WriteFile(f, []byte("one\n"), 0o644)
+	base := filepath.Join(t.TempDir(), "baseline.gob")
+	if err := writeBaseline(base, baseline{Root: root, Files: scan(root, nil)}); err != nil {
+		t.Fatal(err)
+	}
+
+	diffNow := func() string {
+		t.Helper()
+		var buf strings.Builder
+		if code := printDiffAgainst(base, &buf); code != 0 {
+			t.Fatalf("printDiffAgainst exit %d", code)
+		}
+		return buf.String()
+	}
+	later := time.Now().Add(time.Minute)
+
+	os.WriteFile(f, []byte("two\n"), 0o644)
+	os.Chtimes(f, later, later)
+	if out := diffNow(); !strings.Contains(out, "-one") || !strings.Contains(out, "+two") {
+		t.Errorf("first edit not shown:\n%s", out)
+	}
+	os.WriteFile(f, []byte("three\n"), 0o644)
+	os.Chtimes(f, later.Add(time.Minute), later.Add(time.Minute))
+	if out := diffNow(); !strings.Contains(out, "-one") || !strings.Contains(out, "+three") {
+		t.Errorf("diff is not against the baseline:\n%s", out)
+	}
+	os.WriteFile(f, []byte("one\n"), 0o644)
+	os.Chtimes(f, later.Add(2*time.Minute), later.Add(2*time.Minute))
+	if out := diffNow(); out != "" {
+		t.Errorf("reverted file still shown:\n%s", out)
+	}
+}
+
+func TestEnsureDeltaRuns(t *testing.T) {
+	if _, _, err := embeddedDelta(); err != nil {
+		t.Skip(err)
+	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	dir, err := ensureDelta()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"--- a/f.txt", "+++ b/f.txt", "-b", "+c"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("diff missing %q:\n%s", want, out)
-		}
+	out, err := exec.Command(filepath.Join(dir, "delta"), "--version").Output()
+	if err != nil || !strings.HasPrefix(string(out), "delta ") {
+		t.Errorf("delta --version = %q, %v", out, err)
 	}
 }
 

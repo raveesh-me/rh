@@ -20,7 +20,7 @@ var builtins = []builtin{
 	{"pull", "make pull, or checkout default branch + pull in every repo below here", cmdPull},
 	{"update", "replace this rh binary with the latest GitHub release", cmdUpdate},
 	{"mon", "live view of ls . and ls workdir", cmdMon},
-	{"diff", "watch files below here and print diffs as they change", cmdDiff},
+	{"diff", "live diff explorer (diffnav + delta) of files changed below here", cmdDiff},
 }
 
 type routeKind int
