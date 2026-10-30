@@ -1,5 +1,10 @@
 version: 2
 
+before:
+  hooks:
+    # Fetches the delta binaries rh diff embeds (third_party/delta/*/delta.gz).
+    - go generate ./...
+
 builds:
   - binary: rh
     env:

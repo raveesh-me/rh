@@ -27,12 +27,13 @@ xattr -d com.apple.quarantine /usr/local/bin/rh
 go install github.com/raveesh-me/rh@latest
 ```
 
-Installs to `$(go env GOPATH)/bin` — make sure that's on your `PATH`. `rh --version` prints `dev` for this route.
+Installs to `$(go env GOPATH)/bin` — make sure that's on your `PATH`. `rh --version` prints `dev` for this route, and `rh diff` uses `delta` from your `PATH` (`brew install git-delta`) since this route can't embed it.
 
 ## From source
 
 ```sh
 git clone git@github.com:raveesh-me/rh.git && cd rh
+go generate ./...   # fetches the delta binaries rh diff embeds
 go build -o rh . && install -m 0755 rh ~/.local/bin/rh
 ```
 

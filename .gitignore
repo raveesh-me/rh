@@ -1,1 +1,4 @@
 /rh
+
+# delta binaries fetched by go generate
+third_party/delta/*/delta.gz
