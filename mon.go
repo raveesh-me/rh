@@ -14,8 +14,15 @@ import (
 
 const (
 	monInterval = 2 * time.Second
-	// Home, clear screen, and clear scrollback so no residual text survives.
+	// Home, clear screen, and clear scrollback; used on resize when text reflows.
 	clearScreen = "\033[H\033[2J\033[3J"
+	// Synchronized output: the terminal paints the whole frame at once.
+	// Terminals without support ignore these sequences.
+	beginSync = "\033[?2026h"
+	endSync   = "\033[?2026l"
+	// Erase to end of line / to end of screen.
+	eraseLine = "\033[K"
+	eraseDown = "\033[J"
 	// Alternate screen buffer (like top/less): frames never land in the shell's
 	// scrollback, and the original screen is restored on exit.
 	enterAltScreen = "\033[?1049h\033[?25l"
@@ -42,16 +49,37 @@ func cmdMon(args []string) int {
 
 	ticker := time.NewTicker(monInterval)
 	defer ticker.Stop()
+	last, full := "", true
 	for {
-		// Clear on every tick and resize so stale or reflowed text never lingers.
-		fmt.Print(clearScreen + renderMon(dir))
+		if view := renderMon(dir); full || view != last {
+			fmt.Print(monFrame(view, full))
+			last, full = view, false
+		}
 		select {
 		case <-ctx.Done():
 			return 0
 		case <-ticker.C:
 		case <-resize:
+			full = true
 		}
 	}
+}
+
+// monFrame overwrites the previous frame in place instead of clearing first,
+// so ticks don't flash a blank screen. Each line erases its own leftover tail
+// and eraseDown removes rows the previous frame had beyond this one. A full
+// clear is only done when the terminal was resized and old text has reflowed.
+func monFrame(view string, full bool) string {
+	var b strings.Builder
+	b.WriteString(beginSync)
+	if full {
+		b.WriteString(clearScreen)
+	} else {
+		b.WriteString("\033[H")
+	}
+	b.WriteString(strings.ReplaceAll(view, "\n", eraseLine+"\n"))
+	b.WriteString(eraseLine + eraseDown + endSync)
+	return b.String()
 }
 
 func renderMon(dir string) string {
