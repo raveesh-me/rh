@@ -1,24 +1,63 @@
 name: release
 
+# Releases are cut two ways:
+#  - automatically: every green ci run on main bumps the patch version, tags it,
+#    and releases it;
+#  - manually: pushing a v* tag (e.g. for a minor/major bump).
 on:
   push:
     tags: ["v*"]
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test -race ./...
-      - uses: goreleaser/goreleaser-action@v6
+
+      - name: Tag next patch version
+        id: tag
+        if: github.event_name == 'workflow_run'
+        run: |
+          set -euo pipefail
+          if existing=$(git tag --points-at HEAD --list 'v*' | head -n1) && [ -n "$existing" ]; then
+            echo "HEAD already tagged $existing; skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          latest=${latest:-v0.0.0}
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          next="v${major}.${minor}.$((patch + 1))"
+          git tag "$next"
+          git push origin "$next"
+          echo "Tagged $next (previous $latest)"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - if: steps.tag.outputs.skip != 'true'
+        run: go test -race ./...
+      - if: steps.tag.outputs.skip != 'true'
+        uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
