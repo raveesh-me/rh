@@ -21,7 +21,7 @@ var builtins = []builtin{
 	{"update", "replace this rh binary with the latest GitHub release", cmdUpdate},
 	{"mon", "live view of ls . and ls workdir", cmdMon},
 	{"clean", "remove every worktree in workdir/ (keeps branches; -f for dirty ones)", cmdClean},
-	{"diff", "live diff explorer (diffnav + delta) of files changed below here", cmdDiff},
+	{"diff", "live diff explorer of every worktree below here vs its base branch (--live: any files since start)", cmdDiff},
 }
 
 type routeKind int
