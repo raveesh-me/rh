@@ -16,6 +16,10 @@ const (
 	monInterval = 2 * time.Second
 	// Home, clear screen, and clear scrollback so no residual text survives.
 	clearScreen = "\033[H\033[2J\033[3J"
+	// Alternate screen buffer (like top/less): frames never land in the shell's
+	// scrollback, and the original screen is restored on exit.
+	enterAltScreen = "\033[?1049h\033[?25l"
+	leaveAltScreen = "\033[?25h\033[?1049l"
 )
 
 func cmdMon(args []string) int {
@@ -33,6 +37,9 @@ func cmdMon(args []string) int {
 		defer signal.Stop(resize)
 	}
 
+	fmt.Print(enterAltScreen)
+	defer fmt.Print(leaveAltScreen)
+
 	ticker := time.NewTicker(monInterval)
 	defer ticker.Stop()
 	for {
@@ -40,7 +47,6 @@ func cmdMon(args []string) int {
 		fmt.Print(clearScreen + renderMon(dir))
 		select {
 		case <-ctx.Done():
-			fmt.Println()
 			return 0
 		case <-ticker.C:
 		case <-resize:
