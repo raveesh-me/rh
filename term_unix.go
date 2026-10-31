@@ -17,3 +17,6 @@ func termWidth(f *os.File) int {
 	}
 	return int(ws.cols)
 }
+
+// resizeSignals returns the signals delivered when the terminal is resized.
+func resizeSignals() []os.Signal { return []os.Signal{syscall.SIGWINCH} }

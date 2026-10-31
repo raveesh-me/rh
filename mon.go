@@ -14,7 +14,19 @@ import (
 
 const (
 	monInterval = 2 * time.Second
-	clearScreen = "\033[H\033[2J"
+	// Home, clear screen, and clear scrollback; used on resize when text reflows.
+	clearScreen = "\033[H\033[2J\033[3J"
+	// Synchronized output: the terminal paints the whole frame at once.
+	// Terminals without support ignore these sequences.
+	beginSync = "\033[?2026h"
+	endSync   = "\033[?2026l"
+	// Erase to end of line / to end of screen.
+	eraseLine = "\033[K"
+	eraseDown = "\033[J"
+	// Alternate screen buffer (like top/less): frames never land in the shell's
+	// scrollback, and the original screen is restored on exit.
+	enterAltScreen = "\033[?1049h\033[?25l"
+	leaveAltScreen = "\033[?25h\033[?1049l"
 )
 
 func cmdMon(args []string) int {
@@ -26,22 +38,48 @@ func cmdMon(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	resize := make(chan os.Signal, 1)
+	if sigs := resizeSignals(); len(sigs) > 0 {
+		signal.Notify(resize, sigs...)
+		defer signal.Stop(resize)
+	}
+
+	fmt.Print(enterAltScreen)
+	defer fmt.Print(leaveAltScreen)
+
 	ticker := time.NewTicker(monInterval)
 	defer ticker.Stop()
-	last := ""
+	last, full := "", true
 	for {
-		// Only redraw on change so the screen doesn't flicker.
-		if view := renderMon(dir); view != last {
-			fmt.Print(clearScreen + view)
-			last = view
+		if view := renderMon(dir); full || view != last {
+			fmt.Print(monFrame(view, full))
+			last, full = view, false
 		}
 		select {
 		case <-ctx.Done():
-			fmt.Println()
 			return 0
 		case <-ticker.C:
+		case <-resize:
+			full = true
 		}
 	}
+}
+
+// monFrame overwrites the previous frame in place instead of clearing first,
+// so ticks don't flash a blank screen. Each line erases its own leftover tail
+// and eraseDown removes rows the previous frame had beyond this one. A full
+// clear is only done when the terminal was resized and old text has reflowed.
+func monFrame(view string, full bool) string {
+	var b strings.Builder
+	b.WriteString(beginSync)
+	if full {
+		b.WriteString(clearScreen)
+	} else {
+		b.WriteString("\033[H")
+	}
+	b.WriteString(strings.ReplaceAll(view, "\n", eraseLine+"\n"))
+	b.WriteString(eraseLine + eraseDown + endSync)
+	return b.String()
 }
 
 func renderMon(dir string) string {
