@@ -14,7 +14,8 @@ import (
 
 const (
 	monInterval = 2 * time.Second
-	clearScreen = "\033[H\033[2J"
+	// Home, clear screen, and clear scrollback so no residual text survives.
+	clearScreen = "\033[H\033[2J\033[3J"
 )
 
 func cmdMon(args []string) int {
@@ -26,20 +27,23 @@ func cmdMon(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	resize := make(chan os.Signal, 1)
+	if sigs := resizeSignals(); len(sigs) > 0 {
+		signal.Notify(resize, sigs...)
+		defer signal.Stop(resize)
+	}
+
 	ticker := time.NewTicker(monInterval)
 	defer ticker.Stop()
-	last := ""
 	for {
-		// Only redraw on change so the screen doesn't flicker.
-		if view := renderMon(dir); view != last {
-			fmt.Print(clearScreen + view)
-			last = view
-		}
+		// Clear on every tick and resize so stale or reflowed text never lingers.
+		fmt.Print(clearScreen + renderMon(dir))
 		select {
 		case <-ctx.Done():
 			fmt.Println()
 			return 0
 		case <-ticker.C:
+		case <-resize:
 		}
 	}
 }
