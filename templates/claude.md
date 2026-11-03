@@ -12,6 +12,19 @@ This directory is a multi-repo workspace. It is not itself a git repo.
         └── <repo>/ # worktree on branch <task>
 ```
 
+## This workspace is an isolated environment
+
+The workspace root is the directory that contains this file. Treat it as a sealed sandbox: everything you need is inside it, and nothing outside it exists for you. Every rh workspace is isolated in the same way, including any others on this machine.
+
+- **Your boundary is the workspace root and its children.** You may read, search, create, and edit only paths inside it. Before you touch any path, resolve it to an absolute path. If it does not start with the workspace root, don't touch it.
+- **Never go up or sideways.** Don't read, search, list, or edit the parent directory, sibling directories (including other workspaces or projects next to this one), your home directory, or any other location on the machine. `../` is fine only when the resolved path stays inside the workspace, such as `cd ../../..` from a worktree back to the workspace root.
+- **Ignore copies of repos that live outside.** If the same repo is already cloned somewhere else on the machine, act as if it isn't there. Don't read it, run commands in it, add worktrees from it, symlink to it, or copy files out of it.
+- **Need a repo that isn't here? Clone it fresh into this workspace.** From the workspace root, run `git clone <url>` so it lands at `./<repo>/`. Then run `make new TASK=<task> REPOS=<repo>` and work in `workdir/<task>/<repo>/`. The new clone is a root repo: read-only, like the others.
+- **Keep scratch files inside too.** Put notes, logs, and temporary files in `workdir/<task>/`, next to the worktrees and outside them. Don't use `/tmp` or other outside directories.
+- **Toolchain side effects are fine. Direct edits are not.** Normal commands may read and write their own caches and config (Go module cache, npm cache, git and gh credentials). Never edit those locations yourself.
+- **Subagents inherit this boundary.** When you delegate, give the subagent the workspace root's absolute path and these rules.
+- **If a task seems to need anything outside the workspace, stop and ask.** Don't find a way around the boundary.
+
 ## Rules
 
 1. **Every change ships as a pull request from a worktree. No exceptions.** Never commit to, push to, or merge into a default branch directly — not for one-line fixes, docs, or config. If a change can't go through a PR, stop and ask.
@@ -26,6 +39,7 @@ This directory is a multi-repo workspace. It is not itself a git repo.
 
 ```sh
 make check                                  # root repos clean?
+git clone <url>                             # only if <repo> isn't here yet
 make new TASK=<task> REPOS=<repo>           # worktree on branch <task>
 cd workdir/<task>/<repo>                    # do all work here
 # ...edit, build, test...

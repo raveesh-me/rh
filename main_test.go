@@ -91,6 +91,17 @@ func TestInitOverwritesToLatest(t *testing.T) {
 	if err != nil || !strings.Contains(string(agents), filepath.Base(dir)) {
 		t.Errorf("AGENTS.md missing project name: %v %q", err, agents)
 	}
+	for name, body := range map[string][]byte{"CLAUDE.md": claude, "AGENTS.md": agents} {
+		for _, want := range []string{
+			"isolated environment",
+			"Never go up or sideways",
+			"Clone it fresh into this workspace",
+		} {
+			if !strings.Contains(string(body), want) {
+				t.Errorf("%s missing isolation rule %q", name, want)
+			}
+		}
+	}
 	makefile, _ := os.ReadFile("Makefile")
 	if want, _ := templates.ReadFile("templates/makefile"); !bytes.Equal(makefile, want) {
 		t.Error("Makefile differs from template")
